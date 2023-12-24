@@ -9,190 +9,231 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Schema;
 
-namespace lab4
+
+namespace Lab5
 {
-    public class Program
+    class Program
     {
-        public static void Main()
-        //Здесь я запрашиваю у пользователя математическое выражение, после вызываю методы для преобразования выражения и вывожу ответ. 
+        static void Main(string[] args)
         {
-            Console.WriteLine("Введите математическое выражение:");
+            Console.WriteLine("Введите выражение:");
             string expression = Console.ReadLine(); //Считывая выражение
 
-            List<object> tokens = GetTokens(expression); //Работаю с методами 
-            List<object> rpnTokens = ConvertToRPN(tokens); //Работаю с методами 
-            double result = EvaluateRPN(rpnTokens); //Работаю с методами 
+            List<Token> tokens = Tokenize(expression); //Работаю с методами 
+            Queue<Token> rpn = ConvertToRPN(tokens); //Работаю с методами 
 
+            double result = EvaluateRPN(rpn);
             Console.WriteLine("Результат: " + result); //Выводим результат)
         }
 
-        public static List<object> GetTokens(string expression)
-        //Этот метод принимает выражение пользователя и преобразует его с список токенов. 
-        //Далее метод пробегается по всему выражению и каждый его символ закидывает(число или оператор) закидывает в список токенов.
-        //Если символ это цифра, то он попадает в токены. 
-        //Если символ это оператор, то текущий токен добавляет в список токенов, а после оператор добавляется в список токенов.
-        //По итогу, если ластовый токен является числом, он также добавляется в список токенов.
-        //Дальше смотрим метод ConvertToRPN.
-        //PS: Если символ является `(` или `)`, он добавляется в список токенов. 
+        // Метод для разбиения выражения на токены
+        static List<Token> Tokenize(string expression)
+        //Этим методом разбиваю выражение на токены и возвращаю список токенов.
+        //Прохожу по каждому символу в выражении и определяет, является ли символ числом, операцией или скобкой.
+        //Если число, то он добавляет его в список токенов типа Number. 
+        //Если это операция или скобка, то он добавляет их в список токенов типа Operation или Parenthesis.
         {
-            List<object> tokens = new List<object>(); //создаем список, в который будем добавлять токены
-            string currentToken = "";
+            List<Token> tokens = new List<Token>(); //создаю пустой список токенов.
+            string currentNumber = "";
 
-            foreach (char c in expression) //проходимся по каждому символу в выражении и смотреть на объяснение метода выше
+            foreach (char c in expression) //пробегаюсь по каждому символу.
             {
-                if (Char.IsDigit(c))
+                if (char.IsDigit(c) || c == '.') //проверяю, является ли символ цифрой или точкой.
                 {
-                    currentToken += c;
+                    currentNumber += c;
                 }
-                else if (c == '+' || c == '-' || c == '*' || c == '/')
+                else
                 {
-                    if (!String.IsNullOrEmpty(currentToken))
+                    if (!string.IsNullOrEmpty(currentNumber)) //проверяю, является ли текущее число пустым или же относится к null.
                     {
-                        tokens.Add(double.Parse(currentToken));
-                        currentToken = "";
+                        double number = double.Parse(currentNumber);
+                        tokens.Add(new Number(number));
+                        currentNumber = "";
                     }
-                    tokens.Add(c);
-                }
-                else if (c == '(' || c == ')')
-                {
-                    if (!String.IsNullOrEmpty(currentToken)) //проверяем, не является ли текущий токен пустым.
+
+                    if (c == '(' || c == ')')
                     {
-                        tokens.Add(double.Parse(currentToken));
-                        currentToken = "";
+                        tokens.Add(new Parenthesis(c.ToString()));
                     }
-                    tokens.Add(c); //  возвращаем список токенов.
+                    else if (c == '+' || c == '-' || c == '*' || c == '/')
+                    {
+                        tokens.Add(new Operation(c.ToString(), GetPriority(c.ToString())));
+                    }
                 }
             }
 
-            if (!String.IsNullOrEmpty(currentToken))
+            if (!string.IsNullOrEmpty(currentNumber))
             {
-                tokens.Add(double.Parse(currentToken));
+                double number = double.Parse(currentNumber);
+                tokens.Add(new Number(number));
             }
 
-            return tokens;
+            return tokens; // возвращаю список токенов.
         }
 
-        public static List<object> ConvertToRPN(List<object> tokens)
-        //Принимает список токенов и работаем с ОПЗ.                        Это себе: (ЕСЛИ ЗАБЫЛ, ТО СМОТРЕТЬ http://decoding.dax.ru/practic/polishrecord/polishrecord.html)
-        //Юзаем стек, чтобы раскидать всё по приоритетам.                   Смотреть метод GetPrecedence
-        //Если попадается оператор, то метод проверяет приоритет оператора. 
-        //Если оператор на вершине стека имеет больший или равный приоритет, то закидывает операторы из стека в конечный список, пока это вообще возмножно.
-        //Затем текущий оператор добавляется в стек
-        //Ну и в конце концов, все оставшиеся операторы из стека добавляются в конечный список.
+        // Метод для преобразования выражения в обратную польскую запись (ОПЗ)
+        static Queue<Token> ConvertToRPN(List<Token> tokens)
+        //Здесь просто преобразую список токенов в ОПЗ и возвращает очередь токенов.
+        //это себе: ОБЪЯСНЕНИЕ ОПЗ: http://decoding.dax.ru/practic/polishrecord/polishrecord.html
+        //Если токен является числом, то он просто добавляется в очередь. 
+        //Если токен является операцией, то метод проверяет приоритет операции и сравнивает его с операциями, уже находящимися в стеке.
+        //Если токен является скобкой, то метод проверяет, является ли она открывающей или закрывающей. 
+        //И т.п, по итогу получим очередь ОПЗ
         {
-            List<object> output = new List<object>(); //создаем список, в который будем добавлять токены в ОПЗ
-            Stack<object> operatorStack = new Stack<object>(); //наш стек
+            Queue<Token> rpn = new Queue<Token>(); //Создаю пустую очередь токенов для хранения ОПЗ.
+            Stack<Token> stack = new Stack<Token>(); //Создаю пустой стек токенов для выполнения преобразований.
 
-            foreach (object token in tokens) //пробегаемся по всем токенм
+            foreach (Token token in tokens) //Пробегаюсь по всем токенам
             {
-                if (token is double)
+                if (token is Number)
                 {
-                    output.Add(token);
+                    rpn.Enqueue(token);
                 }
-                else if (token is char)
+                else if (token is Operation)
                 {
-                    char op = (char)token;
-
-                    if (op == '(')
+                    while (stack.Count > 0 && stack.Peek() is Operation && ((Operation)stack.Peek()).Priority >= ((Operation)token).Priority)
                     {
-                        operatorStack.Push(op);
+                        rpn.Enqueue(stack.Pop());
                     }
-                    else if (op == ')')
-                    {
-                        while (operatorStack.Count > 0 && (char)operatorStack.Peek() != '(')
-                        {
-                            output.Add(operatorStack.Pop());
-                        }
 
-                        if (operatorStack.Count > 0 && (char)operatorStack.Peek() == '(')
-                        {
-                            operatorStack.Pop();
-                        }
+                    stack.Push(token);
+                }
+                else if (token is Parenthesis)
+                {
+                    if (token.Value == "(")
+                    {
+                        stack.Push(token);
                     }
-                    else
+                    else if (token.Value == ")")
                     {
-                        while (operatorStack.Count > 0 && (char)operatorStack.Peek() != '(' && GetPrecedence(op) <= GetPrecedence((char)operatorStack.Peek()))
+                        while (stack.Count > 0 && !(stack.Peek() is Parenthesis) && ((stack.Peek() as Parenthesis)?.Value != "("))
                         {
-                            output.Add(operatorStack.Pop());
+                            rpn.Enqueue(stack.Pop());
                         }
 
-                        operatorStack.Push(op);
+                        if (stack.Count == 0 || !(stack.Peek() is Parenthesis) || ((stack.Peek() as Parenthesis)?.Value != "("))
+                        {
+                            throw new InvalidOperationException("Несогласованные скобки");
+                        }
+
+                        stack.Pop();
                     }
                 }
             }
 
-            while (operatorStack.Count > 0) //проверяем, пока в стеке операторов есть элементы
+            while (stack.Count > 0)
             {
-                output.Add(operatorStack.Pop());
+                if (stack.Peek() is Parenthesis)
+                {
+                    throw new InvalidOperationException("Несогласованные скобки");
+                }
+
+                rpn.Enqueue(stack.Pop());
             }
 
-            return output; //возвращаем список RPN токенов.
-        }
-        public static double EvaluateRPN(List<object> rpnTokens)
-        //Здесь мы уже получили список токенов в ОПЗ.                        Это себе: (ЕСЛИ ЗАБЫЛ, ТО СМОТРЕТЬ http://decoding.dax.ru/practic/polishrecord/polishrecord.html)
-        //Здесь юзаю стек операндов для хранения чисел. 
-        //Если токен в моём списке это число то оно добавляется в стек операндов.
-        //Если токен в моём списке это оператор,то  метод извлекает два операнда из стека.
-        //Затем выполяет математическую операцию и добавляет результат обратно в стек операндов.
-        //Ну и в конце у нас результат вычисления выражения. Оно находится на вершине стека операндов и возвращается.
-        {
-            Stack<double> operandStack = new Stack<double>(); //создаем стек, в который будем добавлять операнды
-
-            foreach (object token in rpnTokens) //проходимся по каждому токену в списке RPN токенов
-            {
-                if (token is double)
-                {
-                    operandStack.Push((double)token);
-                }
-                else if (token is char)
-                {
-                    char op = (char)token;
-
-                    double operand2 = operandStack.Pop();
-                    double operand1 = operandStack.Pop();
-
-                    double result = 0;
-
-                    switch (op)
-                    {
-                        case '+':
-                            result = operand1 + operand2;
-                            break;
-                        case '-':
-                            result = operand1 - operand2;
-                            break;
-                        case '*':
-                            result = operand1 * operand2;
-                            break;
-                        case '/':
-                            result = operand1 / operand2;
-                            break;
-                    }
-
-                    operandStack.Push(result);
-                }
-            }
-
-            return operandStack.Pop();
+            return rpn;
         }
 
-        public static int GetPrecedence(char op)
-        //Это используется в методе ConvertToRPN
-        //Здесь принимаем оператор и возвращаем его приоритет.
-        //У операторов "+" и "-" приоритет 1. 
-        //У операторов "*" и "/" приоритет 2. 
-        //Если оператор не является ни одним из указанных, возвращается 0.
+        static double EvaluateRPN(Queue<Token> rpn)
+        //Здесь вычисляем то, что получили в ОПЗ. 
         {
-            if (op == '+' || op == '-')
+            Stack<double> stack = new Stack<double>();
+
+            while (rpn.Count > 0)
             {
-                return 1;
-            }
-            else if (op == '*' || op == '/')
-            {
-                return 2;
+                Token token = rpn.Dequeue();
+
+                if (token is Number)
+                {
+                    stack.Push(((Number)token).Value);
+                }
+                else if (token is Operation)
+                {
+                    if (stack.Count < 2)
+                    {
+                        throw new InvalidOperationException("Неправильное количество операндов");
+                    }
+
+                    double operand2 = stack.Pop();
+                    double operand1 = stack.Pop();
+                    double result = PerformOperation(operand1, operand2, ((Operation)token).Value);
+                    stack.Push(result);
+                }
             }
 
-            return 0;
+            return stack.Pop();
+        }
+
+        static double PerformOperation(double operand1, double operand2, string operation)
+        // Метод для выполнения маттмаческих операции
+        {
+            switch (operation)
+            {
+                case "+":
+                    return operand1 + operand2;
+                case "-":
+                    return operand1 - operand2;
+                case "*":
+                    return operand1 * operand2;
+                case "/":
+                    return operand1 / operand2;
+                default:
+                    throw new InvalidOperationException("Недопустимая операция");
+            }
+        }
+
+        static int GetPriority(string operation)
+        // Метод для определения приоритета операции
+        {
+            switch (operation)
+            {
+                case "+":
+                case "-":
+                    return 1;
+                case "*":
+                case "/":
+                    return 2;
+                default:
+                    return 0;
+            }
+        }
+    }
+
+    abstract class Token
+    // Базовый класс для токенов
+    {
+        public string Value { get; protected set; }
+    }
+
+    class Number : Token
+    // Класс для числовых токенов
+    {
+        public double Value { get; private set; }
+
+        public Number(double value)
+        {
+            Value = value;
+        }
+    }
+
+    class Operation : Token
+    // Класс для токенов операций
+    {
+        public int Priority { get; private set; }
+
+        public Operation(string value, int priority)
+        {
+            Value = value;
+            Priority = priority;
+        }
+    }
+
+    class Parenthesis : Token
+    // Класс для токенов скобок
+    {
+        public Parenthesis(string value)
+        {
+            Value = value;
         }
     }
 }
