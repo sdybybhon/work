@@ -17,34 +17,31 @@ namespace Lab5
         static void Main(string[] args)
         {
             Console.WriteLine("Введите выражение:");
-            string expression = Console.ReadLine(); //Считывая выражение
+            string expression = Console.ReadLine();
 
-            List<Token> tokens = Tokenize(expression); //Работаю с методами 
-            Queue<Token> rpn = ConvertToRPN(tokens); //Работаю с методами 
+            List<Token> tokens = Tokenize(expression);
+            Queue<Token> rpn = ConvertToRPN(tokens); 
 
             double result = EvaluateRPN(rpn);
-            Console.WriteLine("Результат: " + result); //Выводим результат)
+            Console.WriteLine("Результат: " + result); 
         }
 
-        // Метод для разбиения выражения на токены
         static List<Token> Tokenize(string expression)
-        //Этим методом разбиваю выражение на токены и возвращаю список токенов.
-        //Прохожу по каждому символу в выражении и определяет, является ли символ числом, операцией или скобкой.
-        //Если число, то он добавляет его в список токенов типа Number. 
+        //Прохожу по каждому символу. Если число, то он добавляет его в список токенов типа Number. 
         //Если это операция или скобка, то он добавляет их в список токенов типа Operation или Parenthesis.
         {
             List<Token> tokens = new List<Token>(); //создаю пустой список токенов.
             string currentNumber = "";
 
-            foreach (char c in expression) //пробегаюсь по каждому символу.
+            foreach (char c in expression)
             {
-                if (char.IsDigit(c) || c == '.') //проверяю, является ли символ цифрой или точкой.
+                if (char.IsDigit(c) || c == '.') 
                 {
                     currentNumber += c;
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(currentNumber)) //проверяю, является ли текущее число пустым или же относится к null.
+                    if (!string.IsNullOrEmpty(currentNumber))
                     {
                         double number = double.Parse(currentNumber);
                         tokens.Add(new Number(number));
@@ -68,22 +65,19 @@ namespace Lab5
                 tokens.Add(new Number(number));
             }
 
-            return tokens; // возвращаю список токенов.
+            return tokens; 
         }
 
-        // Метод для преобразования выражения в обратную польскую запись (ОПЗ)
         static Queue<Token> ConvertToRPN(List<Token> tokens)
         //Здесь просто преобразую список токенов в ОПЗ и возвращает очередь токенов.
-        //это себе: ОБЪЯСНЕНИЕ ОПЗ: http://decoding.dax.ru/practic/polishrecord/polishrecord.html
         //Если токен является числом, то он просто добавляется в очередь. 
         //Если токен является операцией, то метод проверяет приоритет операции и сравнивает его с операциями, уже находящимися в стеке.
         //Если токен является скобкой, то метод проверяет, является ли она открывающей или закрывающей. 
-        //И т.п, по итогу получим очередь ОПЗ
         {
-            Queue<Token> rpn = new Queue<Token>(); //Создаю пустую очередь токенов для хранения ОПЗ.
-            Stack<Token> stack = new Stack<Token>(); //Создаю пустой стек токенов для выполнения преобразований.
+            Queue<Token> rpn = new Queue<Token>(); 
+            Stack<Token> stack = new Stack<Token>();
 
-            foreach (Token token in tokens) //Пробегаюсь по всем токенам
+            foreach (Token token in tokens) 
             {
                 if (token is Number)
                 {
@@ -200,13 +194,11 @@ namespace Lab5
     }
 
     abstract class Token
-    // Базовый класс для токенов
     {
         public string Value { get; protected set; }
     }
 
     class Number : Token
-    // Класс для числовых токенов
     {
         public double Value { get; private set; }
 
@@ -217,7 +209,6 @@ namespace Lab5
     }
 
     class Operation : Token
-    // Класс для токенов операций
     {
         public int Priority { get; private set; }
 
@@ -229,7 +220,6 @@ namespace Lab5
     }
 
     class Parenthesis : Token
-    // Класс для токенов скобок
     {
         public Parenthesis(string value)
         {
